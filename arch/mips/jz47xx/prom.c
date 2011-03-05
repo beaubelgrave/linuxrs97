@@ -22,6 +22,7 @@
 
 #include <asm/bootinfo.h>
 #include <asm/mach-jz47xx/base.h>
+#include <asm/mach-jz47xx/soc.h>
 
 static __init void jz4740_init_cmdline(int argc, char *argv[])
 {
@@ -54,15 +55,21 @@ void __init prom_free_prom_memory(void)
 {
 }
 
-#define UART_REG(_reg) ((void __iomem *)CKSEG1ADDR(JZ47XX_UART0_BASE_ADDR + (_reg << 2)))
+#define UART_REG(_base, _reg) ((void __iomem *)CKSEG1ADDR(_base + (_reg << 2)))
 
 void prom_putchar(char c)
 {
 	uint8_t lsr;
+	unsigned int base;
+
+	if (soc_is_jz4760())
+		base = JZ47XX_UART1_BASE_ADDR;
+	else
+		base = JZ47XX_UART0_BASE_ADDR;
 
 	do {
-		lsr = readb(UART_REG(UART_LSR));
+		lsr = readb(UART_REG(base, UART_LSR));
 	} while ((lsr & UART_LSR_TEMT) == 0);
 
-	writeb(c, UART_REG(UART_TX));
+	writeb(c, UART_REG(base, UART_TX));
 }
