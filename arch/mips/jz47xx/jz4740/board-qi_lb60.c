@@ -465,7 +465,7 @@ static int __init qi_lb60_init_platform_devices(void)
 
 }
 
-struct jz4740_clock_board_data jz4740_clock_bdata = {
+struct jz47xx_clock_board_data jz47xx_clock_bdata = {
 	.ext_rate = 12000000,
 	.rtc_rate = 32768,
 };

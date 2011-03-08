@@ -525,6 +525,12 @@ config MTD_NAND_JZ4740
 	help
 		Enables support for NAND Flash on JZ4740 SoC based boards.
 
+config MTD_NAND_JZ4750
+	tristate "Support for JZ4750 SoC NAND controller"
+	depends on MACH_JZ4750
+	help
+		Enables support for NAND Flash on JZ4750 SoC based boards.
+
 config MTD_NAND_FSMC
 	tristate "Support for NAND on ST Micros FSMC"
 	depends on PLAT_SPEAR || PLAT_NOMADIK || MACH_U300

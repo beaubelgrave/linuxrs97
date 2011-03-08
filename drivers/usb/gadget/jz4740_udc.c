@@ -38,7 +38,6 @@
 #include <asm/io.h>
 #include <asm/irq.h>
 #include <asm/system.h>
-#include <asm/mach-jz4740/clock.h>
 
 #include "jz4740_udc.h"
 
@@ -326,6 +325,9 @@ static void udc_disable(struct jz4740_udc *dev)
 	usb_clearb(dev, JZ_REG_UDC_POWER, USB_POWER_SOFTCONN);
 
 	/* Disable the USB PHY */
+	clk_disable(dev->phy_clk);
+
+	/* Disable the UDC */
 	clk_disable(dev->clk);
 
 	dev->ep0state = WAIT_FOR_SETUP;
@@ -382,14 +384,16 @@ static void udc_enable(struct jz4740_udc *dev)
 		flush(ep);
 	}
 
-	/* Set this bit to allow the UDC entering low-power mode when
-	 * there are no actions on the USB bus.
-	 * UDC still works during this bit was set.
+	/* The UDC clock itself is a bit special: if the PHY clock
+	 * is enabled, the UDC is clocked too, regardless of the
+	 * requested state. Currently the driver turns UDC off
+	 * completely while entering suspend mode, and this does not
+	 * matter a lot.
 	 */
-	jz4740_clock_udc_enable_auto_suspend();
+	clk_enable(dev->clk);
 
 	/* Enable the USB PHY */
-	clk_enable(dev->clk);
+	clk_enable(dev->phy_clk);
 
 	/* Disable interrupts */
 /*	usb_writew(dev, JZ_REG_UDC_INTRINE, 0);
@@ -2236,11 +2240,18 @@ static int __devinit jz4740_udc_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	jz4740_udc->phy_clk = clk_get(&pdev->dev, "udc-phy");
+	if (IS_ERR(jz4740_udc->phy_clk)) {
+		ret = PTR_ERR(jz4740_udc->phy_clk);
+		dev_err(&pdev->dev, "Failed to get udc phy clock: %d\n", ret);
+		goto err_device_unregister;
+	}
+
 	jz4740_udc->clk = clk_get(&pdev->dev, "udc");
 	if (IS_ERR(jz4740_udc->clk)) {
 		ret = PTR_ERR(jz4740_udc->clk);
 		dev_err(&pdev->dev, "Failed to get udc clock: %d\n", ret);
-		goto err_device_unregister;
+		goto err_phy_clk_put;
 	}
 
 	platform_set_drvdata(pdev, jz4740_udc);
@@ -2287,6 +2298,8 @@ err_iounmap:
 	iounmap(jz4740_udc->base);
 err_release_mem_region:
 	release_mem_region(jz4740_udc->mem->start, resource_size(jz4740_udc->mem));
+err_phy_clk_put:
+	clk_put(jz4740_udc->phy_clk);
 err_clk_put:
 	clk_put(jz4740_udc->clk);
 err_device_unregister:
@@ -2309,6 +2322,7 @@ static int __devexit jz4740_udc_remove(struct platform_device *pdev)
 	iounmap(dev->base);
 	release_mem_region(dev->mem->start, resource_size(dev->mem));
 	clk_put(dev->clk);
+	clk_put(dev->phy_clk);
 
 	platform_set_drvdata(pdev, NULL);
 	device_unregister(&dev->gadget.dev);

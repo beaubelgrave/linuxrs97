@@ -125,7 +125,7 @@ int __init jz47xx_ost_init(unsigned int irq)
 
 	jz47xx_ost_clockevent.irq = irq;
 
-	clk_rate = jz4740_clock_bdata.ext_rate >> 4;
+	clk_rate = jz47xx_clock_bdata.ext_rate >> 4;
 
 	clocksource_set_clock(&jz47xx_ost_clocksource, clk_rate);
 	ret = clocksource_register(&jz47xx_ost_clocksource);

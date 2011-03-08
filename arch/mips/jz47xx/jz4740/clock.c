@@ -22,7 +22,7 @@
 #include <linux/list.h>
 #include <linux/err.h>
 
-#include <jz4740/clock.h>
+#include <asm/mach-jz47xx/clock.h>
 #include <asm/mach-jz47xx/base.h>
 
 #include "../clock.h"
@@ -158,7 +158,7 @@ static void jz_clk_reg_clear_bits(int reg, uint32_t mask)
 
 static int jz_clk_enable_gating(struct clk *clk)
 {
-	if (clk->gate_bit == JZ4740_CLK_NOT_GATED)
+	if (clk->gate_bit == JZ47XX_CLK_NOT_GATED)
 		return -EINVAL;
 
 	jz_clk_reg_clear_bits(JZ_REG_CLOCK_GATE, clk->gate_bit);
@@ -167,7 +167,7 @@ static int jz_clk_enable_gating(struct clk *clk)
 
 static int jz_clk_disable_gating(struct clk *clk)
 {
-	if (clk->gate_bit == JZ4740_CLK_NOT_GATED)
+	if (clk->gate_bit == JZ47XX_CLK_NOT_GATED)
 		return -EINVAL;
 
 	jz_clk_reg_set_bits(JZ_REG_CLOCK_GATE, clk->gate_bit);
@@ -176,7 +176,7 @@ static int jz_clk_disable_gating(struct clk *clk)
 
 static int jz_clk_is_enabled_gating(struct clk *clk)
 {
-	if (clk->gate_bit == JZ4740_CLK_NOT_GATED)
+	if (clk->gate_bit == JZ47XX_CLK_NOT_GATED)
 		return 1;
 
 	return !(jz_clk_reg_read(JZ_REG_CLOCK_GATE) & clk->gate_bit);
@@ -300,7 +300,7 @@ static struct clk_ops jz_clk_static_ops = {
 static struct static_clk jz_clk_ext = {
 	.clk = {
 		.name = "ext",
-		.gate_bit = JZ4740_CLK_NOT_GATED,
+		.gate_bit = JZ47XX_CLK_NOT_GATED,
 		.ops = &jz_clk_static_ops,
 	},
 };
@@ -408,7 +408,7 @@ static int jz_clk_i2s_set_parent(struct clk *clk, struct clk *parent)
 	return 0;
 }
 
-static int jz_clk_udc_enable(struct clk *clk)
+static int jz_clk_udc_phy_enable(struct clk *clk)
 {
 	jz_clk_reg_set_bits(JZ_REG_CLOCK_SLEEP_CTRL,
 			JZ_CLOCK_SLEEP_CTRL_ENABLE_UDC);
@@ -416,7 +416,7 @@ static int jz_clk_udc_enable(struct clk *clk)
 	return 0;
 }
 
-static int jz_clk_udc_disable(struct clk *clk)
+static int jz_clk_udc_phy_disable(struct clk *clk)
 {
 	jz_clk_reg_clear_bits(JZ_REG_CLOCK_SLEEP_CTRL,
 			JZ_CLOCK_SLEEP_CTRL_ENABLE_UDC);
@@ -424,10 +424,29 @@ static int jz_clk_udc_disable(struct clk *clk)
 	return 0;
 }
 
-static int jz_clk_udc_is_enabled(struct clk *clk)
+static int jz_clk_udc_phy_is_enabled(struct clk *clk)
 {
 	return !!(jz_clk_reg_read(JZ_REG_CLOCK_SLEEP_CTRL) &
 			JZ_CLOCK_SLEEP_CTRL_ENABLE_UDC);
+}
+
+static int jz_clk_udc_enable(struct clk *clk)
+{
+	jz_clk_reg_clear_bits(JZ_REG_CLOCK_GATE, JZ_CLOCK_GATE_UDC);
+
+	return 0;
+}
+
+static int jz_clk_udc_disable(struct clk *clk)
+{
+	jz_clk_reg_set_bits(JZ_REG_CLOCK_GATE, JZ_CLOCK_GATE_UDC);
+
+	return 0;
+}
+
+static int jz_clk_udc_is_enabled(struct clk *clk)
+{
+	return !!(jz_clk_reg_read(JZ_REG_CLOCK_GATE) & JZ_CLOCK_GATE_UDC);
 }
 
 static int jz_clk_udc_set_parent(struct clk *clk, struct clk *parent)
@@ -623,7 +642,7 @@ static struct divided_clk jz4740_clock_divided_clks[] = {
 		.clk = {
 			.name = "lcd_pclk",
 			.parent = &jz_clk_pll_half,
-			.gate_bit = JZ4740_CLK_NOT_GATED,
+			.gate_bit = JZ47XX_CLK_NOT_GATED,
 			.ops = &jz_clk_divided_ops,
 		},
 		.reg = JZ_REG_CLOCK_LCD,
@@ -649,6 +668,12 @@ static struct divided_clk jz4740_clock_divided_clks[] = {
 		.reg = JZ_REG_CLOCK_UHC,
 		.mask = JZ_CLOCK_UHC_DIV_MASK,
 	},
+};
+
+static const struct clk_ops jz_clk_udc_phy_ops = {
+	.enable = jz_clk_udc_phy_enable,
+	.disable = jz_clk_udc_phy_disable,
+	.is_enabled = jz_clk_udc_phy_is_enabled,
 };
 
 static const struct clk_ops jz_clk_udc_ops = {
@@ -713,6 +738,11 @@ static struct clk jz4740_clock_simple_clks[] = {
 		.parent = &jz_clk_ext.clk,
 		.gate_bit = JZ_CLOCK_GATE_AIC,
 		.ops = &jz_clk_simple_ops,
+	},
+	[8] = {
+		.name = "udc-phy",
+		.parent = &jz4740_clock_simple_clks[0], /* udc */
+		.ops = &jz_clk_udc_phy_ops,
 	},
 };
 
@@ -843,31 +873,19 @@ static void clk_register_clks(void)
 		clk_add(&jz4740_clock_simple_clks[i]);
 }
 
-void jz4740_clock_set_wait_mode(enum jz4740_wait_mode mode)
+void jz47xx_clock_set_wait_mode(enum jz47xx_wait_mode mode)
 {
 	switch (mode) {
-	case JZ4740_WAIT_MODE_IDLE:
+	case JZ47XX_WAIT_MODE_IDLE:
 		jz_clk_reg_clear_bits(JZ_REG_CLOCK_LOW_POWER, JZ_CLOCK_LOW_POWER_MODE_SLEEP);
 		break;
-	case JZ4740_WAIT_MODE_SLEEP:
+	case JZ47XX_WAIT_MODE_SLEEP:
 		jz_clk_reg_set_bits(JZ_REG_CLOCK_LOW_POWER, JZ_CLOCK_LOW_POWER_MODE_SLEEP);
 		break;
 	}
 }
 
-void jz4740_clock_udc_disable_auto_suspend(void)
-{
-	jz_clk_reg_clear_bits(JZ_REG_CLOCK_GATE, JZ_CLOCK_GATE_UDC);
-}
-EXPORT_SYMBOL_GPL(jz4740_clock_udc_disable_auto_suspend);
-
-void jz4740_clock_udc_enable_auto_suspend(void)
-{
-	jz_clk_reg_set_bits(JZ_REG_CLOCK_GATE, JZ_CLOCK_GATE_UDC);
-}
-EXPORT_SYMBOL_GPL(jz4740_clock_udc_enable_auto_suspend);
-
-void jz4740_clock_suspend(void)
+void jz47xx_clock_suspend(void)
 {
 	jz_clk_reg_set_bits(JZ_REG_CLOCK_GATE,
 		JZ_CLOCK_GATE_TCU | JZ_CLOCK_GATE_DMAC | JZ_CLOCK_GATE_UART0);
@@ -875,7 +893,7 @@ void jz4740_clock_suspend(void)
 	jz_clk_reg_clear_bits(JZ_REG_CLOCK_PLL, JZ_CLOCK_PLL_ENABLED);
 }
 
-void jz4740_clock_resume(void)
+void jz47xx_clock_resume(void)
 {
 	uint32_t pll;
 
@@ -899,8 +917,8 @@ static int jz4740_clock_init(void)
 
 	spin_lock_init(&jz_clock_lock);
 
-	jz_clk_ext.rate = jz4740_clock_bdata.ext_rate;
-	jz_clk_rtc.rate = jz4740_clock_bdata.rtc_rate;
+	jz_clk_ext.rate = jz47xx_clock_bdata.ext_rate;
+	jz_clk_rtc.rate = jz47xx_clock_bdata.rtc_rate;
 
 	val = jz_clk_reg_read(JZ_REG_CLOCK_SPI);
 

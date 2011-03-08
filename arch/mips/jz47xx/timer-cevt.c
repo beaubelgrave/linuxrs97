@@ -96,7 +96,7 @@ void __init jz47xx_timer_cevt_init(unsigned int irq, unsigned int timer_id)
 
 	jz47xx_clockevent.irq = irq;
 
-	clk_rate = jz4740_clock_bdata.ext_rate >> 4;
+	clk_rate = jz47xx_clock_bdata.ext_rate >> 4;
 	jz47xx_ticks_per_jiffy = DIV_ROUND_CLOSEST(clk_rate, HZ);
 
 	clockevent_set_clock(&jz47xx_clockevent, clk_rate);

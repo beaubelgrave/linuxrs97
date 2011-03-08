@@ -45,7 +45,7 @@ int __init jz47xx_timer_csrc_init(unsigned int timer_id)
 
 	jz47xx_timer_clocksource = timer_id;
 
-	clk_rate = jz4740_clock_bdata.ext_rate >> 4;
+	clk_rate = jz47xx_clock_bdata.ext_rate >> 4;
 
 	clocksource_set_clock(&jz47xx_clocksource, clk_rate);
 	ret = clocksource_register(&jz47xx_clocksource);

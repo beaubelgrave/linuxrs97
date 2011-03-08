@@ -18,15 +18,15 @@
 
 #include <linux/list.h>
 
-struct jz4740_clock_board_data {
+struct jz47xx_clock_board_data {
 	unsigned long ext_rate;
 	unsigned long rtc_rate;
 };
 
-extern struct jz4740_clock_board_data jz4740_clock_bdata;
+extern struct jz47xx_clock_board_data jz47xx_clock_bdata;
 
-void jz4740_clock_suspend(void);
-void jz4740_clock_resume(void);
+void jz47xx_clock_suspend(void);
+void jz47xx_clock_resume(void);
 
 struct clk;
 
@@ -59,7 +59,7 @@ struct clk {
 
 };
 
-#define JZ4740_CLK_NOT_GATED ((uint32_t)-1)
+#define JZ47XX_CLK_NOT_GATED ((uint32_t)-1)
 
 int clk_is_enabled(struct clk *clk);
 

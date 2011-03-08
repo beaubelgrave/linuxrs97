@@ -83,7 +83,7 @@ struct jz4740_udc {
 	void __iomem *base;
 	int irq;
 
-	struct clk *clk;
+	struct clk *clk, *phy_clk;
 };
 
 #define ep_maxpacket(EP) 	((EP)->ep.maxpacket)

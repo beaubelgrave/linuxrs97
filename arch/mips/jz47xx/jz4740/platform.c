@@ -286,7 +286,7 @@ void jz4740_serial_device_register(void)
 	struct plat_serial8250_port *p;
 
 	for (p = jz4740_uart_data; p->flags != 0; ++p)
-		p->uartclk = jz4740_clock_bdata.ext_rate;
+		p->uartclk = jz47xx_clock_bdata.ext_rate;
 
 	platform_device_register(&jz4740_uart_device);
 }
