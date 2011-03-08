@@ -85,6 +85,26 @@ struct platform_device jz4750_nand_device = {
 	.resource = jz4750_nand_resources,
 };
 
+/* LCD controller */
+static struct resource jz4750_framebuffer_resources[] = {
+	{
+		.start  = JZ47XX_LCD_BASE_ADDR,
+		.end    = JZ47XX_LCD_BASE_ADDR + 0x1000 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+};
+
+struct platform_device jz4750_framebuffer_device = {
+	.name           = "jz4740-fb",
+	.id             = -1,
+	.num_resources  = ARRAY_SIZE(jz4750_framebuffer_resources),
+	.resource       = jz4750_framebuffer_resources,
+	.dev = {
+		.dma_mask = &jz4750_framebuffer_device.dev.coherent_dma_mask,
+		.coherent_dma_mask = DMA_BIT_MASK(32),
+	},
+};
+
 /* RTC controller */
 static struct resource jz4750_rtc_resources[] = {
 	{

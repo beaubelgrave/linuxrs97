@@ -22,6 +22,7 @@
 #include "../clock.h"
 
 #include <jz4750_nand.h>
+#include <jz4740_fb.h>
 
 /* NAND */
 static struct nand_ecclayout xz0032_ecclayout = {
@@ -67,15 +68,46 @@ static struct jz_nand_platform_data xz0032_nand_pdata = {
 	.busy_gpio      = 91,
 };
 
+/* LCD */
+
+static struct fb_videomode xz0032_video_modes[] = {
+	{
+		.name = "480x272",
+		.xres = 480,
+		.yres = 272,
+		.refresh = 60,
+		.left_margin = 2,
+		.right_margin = 2,
+		.upper_margin = 2,
+		.lower_margin = 2,
+		.hsync_len = 41,
+		.vsync_len = 10,
+		.sync = 0,
+		.vmode = FB_VMODE_NONINTERLACED,
+	},
+};
+
+static struct jz4740_fb_platform_data xz0032_fb_pdata = {
+	.width          = 90,
+	.height         = 52,
+	.num_modes      = ARRAY_SIZE(xz0032_video_modes),
+	.modes          = xz0032_video_modes,
+	.bpp            = 16,
+	.lcd_type       = JZ_LCD_TYPE_GENERIC_16_BIT,
+	.pixclk_falling_edge = 1,
+};
+
 static struct platform_device *jz_platform_devices[] __initdata = {
 	&jz4750_rtc_device,
 	&jz4750_udc_device,
 	&jz4750_nand_device,
+	&jz4750_framebuffer_device,
 };
 
 static int __init xz0032_init_platform_devices(void)
 {
 	jz4750_nand_device.dev.platform_data = &xz0032_nand_pdata;
+	jz4750_framebuffer_device.dev.platform_data = &xz0032_fb_pdata;
 
 	jz4750_serial_device_register();
 
